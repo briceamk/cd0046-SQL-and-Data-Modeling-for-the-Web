@@ -75,6 +75,16 @@
                   aria-label="Search">
               </form>
               {% endif %}
+              {% if (request.endpoint == 'shows') or
+                (request.endpoint == 'search_shows') %}
+              <form class="search" method="post" action="/shows/search">
+                <input class="form-control"
+                  type="search"
+                  name="search_term"
+                  placeholder="Find a show"
+                  aria-label="Search">
+              </form>
+              {% endif %}
             </li>
           </ul>
           <ul class="nav navbar-nav">
@@ -117,6 +127,28 @@
   <script>window.jQuery || document.write('<script type="text/javascript" src="/static/js/libs/jquery-1.11.1.min.js"><\/script>')</script>
   <script type="text/javascript" src="/static/js/libs/bootstrap-3.1.1.min.js" defer></script>
   <script type="text/javascript" src="/static/js/plugins.js" defer></script>
+  <script>
+      document.getElementById('delete-button').onclick = function (e) {
+          e.preventDefault();
+
+          const venueId = e.target.dataset['id'];
+          alert('confirm deletion of venue with the id ' + venueId + '?');
+
+           fetch('/venues/' + venueId, {
+              method: 'DELETE'
+          })
+          .then(function (response) {
+              return response.json()
+          })
+          .then(function (jsonResponse) {
+              window.location.replace("http://localhost:3000");
+          })
+          .catch(function (e) {
+              console.log('Server Error....');
+          })
+
+      }
+  </script>
 
 </body>
 </html>

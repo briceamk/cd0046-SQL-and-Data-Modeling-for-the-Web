@@ -8,6 +8,5 @@ DEBUG = True
 
 # Connect to the database
 
-
-# TODO IMPLEMENT DATABASE URL
-SQLALCHEMY_DATABASE_URI = '<Put your local database url>'
+SQLALCHEMY_DATABASE_URI = 'postgresql://flask:flask123@localhost:5432/Fyyur'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
