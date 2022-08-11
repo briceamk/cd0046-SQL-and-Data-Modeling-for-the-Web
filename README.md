@@ -171,13 +171,31 @@ source env/Scripts/activate
 pip install -r requirements.txt
 ```
 
-5. **Run the development server:**
+5. **Create Owner and Database:**
+```
+create a owner and database:
+
+owner username: flask
+owner passaword: flask123
+database: Fyyur
+```
+
+6. **Make migration:**
+```
+At the root folder run follwing  command
+
+flask db init
+flask db migrate
+flask db upgrade
+```
+
+7. **Run the development server:**
 ```
 export FLASK_APP=myapp
 export FLASK_ENV=development # enables debug mode
 python3 app.py
 ```
 
-6. **Verify on the Browser**<br>
+8. **Verify on the Browser**<br>
 Navigate to project homepage [http://127.0.0.1:5000/](http://127.0.0.1:5000/) or [http://localhost:5000](http://localhost:5000) 
 

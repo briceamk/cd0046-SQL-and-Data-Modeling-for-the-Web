@@ -29,14 +29,15 @@ class Genre(Enum):
 
     @classmethod
     def choices(cls):
-        return [(choice, choice.name) for choice in cls]
+        return [(choice, choice.value) for choice in cls]
 
     @classmethod
-    def coerce(cls, genre):
-        return cls(genre) if not isinstance(genre, cls) else genre
+    def coerce(cls, item):
+        return cls(item) if not isinstance(item, cls) else item
 
     def __str__(self):
-        return self.value
+        return str(self.value)
+
 
 class State(Enum):
     AL = 'AL'
@@ -101,7 +102,6 @@ class State(Enum):
 
     def __str__(self):
         return self.value
-
 
 
 class ShowForm(FlaskForm):
