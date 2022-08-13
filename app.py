@@ -7,12 +7,12 @@ import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, jsonify, flash, redirect, url_for
 from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
+
 from flask_migrate import Migrate
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
 from forms import *
+from models import *
 import os
 
 # ----------------------------------------------------------------------------#
@@ -20,184 +20,17 @@ import os
 # ----------------------------------------------------------------------------#
 
 app = Flask(__name__)
+
 moment = Moment(app)
+
 app.config.from_object('config')
-db = SQLAlchemy(app)
+
+setup_db(app)
 
 migrate = Migrate(app, db)
 
 
-# ----------------------------------------------------------------------------#
-# Models.
-# ----------------------------------------------------------------------------#
 
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean(), default=False)
-    seeking_description = db.Column(db.Text())
-    shows = db.relationship('Show', backref='Venue', lazy=True)
-
-    def insert(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-
-    @classmethod
-    def get_venue(cls, venue_id):
-        return Venue.query.get(venue_id)
-
-    @classmethod
-    def get_venues(cls):
-        return Venue.query.all()
-
-    @classmethod
-    def search_venue_by_keyword(cls, keyword):
-        return Venue.query.filter(Venue.name.ilike('%' + keyword + '%')).all()
-
-    @classmethod
-    def convert_genre_name_to_label(cls, genre_names):
-        genres = []
-        for genre in genre_names:
-            genres.append(Genre[genre])
-        return genres
-
-    @classmethod
-    def convert_genre_label_to_name(cls, genre_labels):
-        genres = []
-        for genre in genre_labels:
-            genres.append(Genre.coerce(genre))
-        return [genre.name for genre in genres]
-
-    @classmethod
-    def convert_genre_object_to_array(cls, genres):
-        return genres.replace('{', '').replace('}', '').split(',')
-
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean(), default=False)
-    seeking_description = db.Column(db.Text())
-    shows = db.relationship('Show', backref='Artist', lazy=True)
-
-    def insert(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
-
-    @classmethod
-    def get_artist(cls, artist_id):
-        return Artist.query.get(artist_id)
-
-    @classmethod
-    def get_artists(cls):
-        return Artist.query.with_entities(Artist.id, Artist.name).all()
-
-    @classmethod
-    def search_artist_by_keyword(cls, keyword):
-        return Artist.query.filter(Artist.name.ilike('%' + keyword + '%')).all()
-
-    @classmethod
-    def convert_genre_name_to_label(cls, genre_names):
-        genres = []
-        for genre in genre_names:
-            genres.append(Genre[genre])
-        return genres
-
-    @classmethod
-    def convert_genre_label_to_name(cls, genre_labels):
-        genres = []
-        for genre in genre_labels:
-            genres.append(Genre.coerce(genre))
-        return [genre.name for genre in genres]
-
-    @classmethod
-    def convert_genre_object_to_array(cls, genres):
-        return genres.replace('{', '').replace('}', '').split(',')
-
-
-class Show(db.Model):
-    __tablename__ = 'Show'
-
-    id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'))
-    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'))
-    start_time = db.Column(db.DateTime, nullable=False)
-
-    def insert(self):
-        db.session.add(self)
-        db.session.commit()
-
-    @classmethod
-    def get_shows(cls):
-        return Show.query.join(Venue, Show.venue_id == Venue.id) \
-            .add_columns(Show.venue_id, Venue.name) \
-            .join(Artist, Show.artist_id == Artist.id) \
-            .add_columns(Show.artist_id, Artist.name, Artist.image_link, Show.start_time) \
-            .all()
-
-    @classmethod
-    def get_all_upcomming_show_by_venues(cls, venues):
-        return Show.query.filter(Show.venue_id.in_([venue.id for venue in venues]),
-                                 Show.start_time >= datetime.now()).all()
-
-    @classmethod
-    def get_show_by_venue_id(cls, venue_id):
-        return Show.query \
-            .join(Artist, Artist.id == Show.artist_id) \
-            .add_columns(Artist.id, Artist.name, Artist.image_link, Show.start_time) \
-            .filter(Show.venue_id == venue_id).all()
-
-    @classmethod
-    def get_show_by_artist_id(cls, artist_id):
-        return Show.query \
-            .join(Venue, Venue.id == Show.venue_id) \
-            .add_columns(Venue.id, Venue.name, Venue.image_link, Show.start_time) \
-            .filter(Show.artist_id == artist_id).all()
-
-    @classmethod
-    def get_upcomming_shows(cls, shows):
-        return list(filter(lambda show: show.get('start_time') >= datetime.now(), shows))
-
-    @classmethod
-    def get_past_shows(cls, shows):
-        return list(filter(lambda show: show.get('start_time') < datetime.now(), shows))
-
-    @classmethod
-    def search_show_by_keyword(cls, keyword):
-        return Show.query.filter(Show.id == keyword).all()
 
 
 # ----------------------------------------------------------------------------#
@@ -305,22 +138,30 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
+    form = VenueForm()
+    if not form.validate_on_submit():
+        return render_template('forms/new_venue.html', form=form)
     try:
         form_data = request.form.to_dict(flat=False)
         venue_dict = {key: form_data[key][0] if len(form_data[key]) <= 1 else form_data[key] for key in form_data}
+        print(str(venue_dict))
         # convert string value to boolean
         if venue_dict.get('seeking_talent') == 'y':
             venue_dict.update({'seeking_talent': True})
         else:
             venue_dict.update({'seeking_talent': False})
         # converting label enum to name enum
-        venue_dict.update({'genres': Venue.convert_genre_label_to_name(venue_dict.get('genres'))})
+        if isinstance(venue_dict.get('genres'), str):
+            venue_dict.update({'genres': Venue.convert_genre_label_to_name([venue_dict.get('genres')])})
+        else:
+            venue_dict.update({'genres': Venue.convert_genre_label_to_name(venue_dict.get('genres'))})
         venue = Venue(**venue_dict)
         venue.insert()
         #on successful db insert, flash success
         flash('Venue ' + venue.name + ' was successfully listed!')
-    except:
-        flash('An error occurred. Venue with name' + request.form.get('name') + ' could not be saved.')
+    except Exception as e:
+        print(e)
+        flash('An error occurred. Venue with name ' + request.form.get('name') + ' could not be saved.')
         # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
     finally:
         db.session.close()
@@ -405,6 +246,10 @@ def edit_artist(artist_id):
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
+    form = ArtistForm()
+    if not form.validate_on_submit():
+        artist = Artist.get_artist(artist_id)
+        return render_template('forms/edit_artist.html', form=form, artist=artist)
     form_data = request.form.to_dict(flat=False)
     artist_dict = {key: form_data[key][0] if len(form_data[key]) <= 1 else form_data[key] for key in form_data}
     artist = Artist.get_artist(artist_id)
@@ -413,7 +258,10 @@ def edit_artist_submission(artist_id):
             if key == 'seeking_venue':
                 value = True if value == 'y' else False
             if key == 'genres':
-                value = Artist.convert_genre_label_to_name(value)
+                if isinstance(value, str):
+                    value = Artist.convert_genre_label_to_name([value])
+                else:
+                    value = Artist.convert_genre_label_to_name(value)
             setattr(artist, key, value)
     artist.update()
     db.session.close()
@@ -431,6 +279,10 @@ def edit_venue(venue_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
+    form = VenueForm()
+    if not form.validate_on_submit():
+        venue = Venue.get_venue(venue_id)
+        return render_template('forms/edit_venue.html', form=form, venue=venue)
     form_data = request.form.to_dict(flat=False)
     venue_dict = {key: form_data[key][0] if len(form_data[key]) <= 1 else form_data[key] for key in form_data}
     venue = Venue.get_venue(venue_id)
@@ -439,7 +291,10 @@ def edit_venue_submission(venue_id):
             if key == 'seeking_talent':
                 value = True if value == 'y' else False
             if key == 'genres':
-                value = Venue.convert_genre_label_to_name(value)
+                if isinstance(value, str):
+                    value = Artist.convert_genre_label_to_name([value])
+                else:
+                    value = Artist.convert_genre_label_to_name(value)
             setattr(venue, key, value)
     venue.update()
     db.session.close()
@@ -457,6 +312,9 @@ def create_artist_form():
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
+    form = ArtistForm()
+    if not form.validate_on_submit():
+        return render_template('forms/new_artist.html', form=form)
     try:
         form_data = request.form.to_dict(flat=False)
         artist_dict = {key: form_data[key][0] if len(form_data[key]) <= 1 else form_data[key] for key in form_data}
@@ -466,7 +324,11 @@ def create_artist_submission():
         else:
             artist_dict.update({'seeking_venue': False})
         # converting label enum to name enum
-        artist_dict.update({'genres': Artist.convert_genre_label_to_name(artist_dict.get('genres'))})
+            # converting label enum to name enum
+            if isinstance(artist_dict.get('genres'), str):
+                artist_dict.update({'genres': Venue.convert_genre_label_to_name([artist_dict.get('genres')])})
+            else:
+                artist_dict.update({'genres': Venue.convert_genre_label_to_name(artist_dict.get('genres'))})
         artist = Artist(**artist_dict)
         artist.insert()
         # on successful db insert, flash success
@@ -501,10 +363,12 @@ def create_shows():
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
+    form = ShowForm()
+    if not form.validate_on_submit():
+        return render_template('forms/new_show.html', form=form)
     try:
         form_data = request.form.to_dict(flat=True)
         show_dict = {key: form_data[key][0] if len(form_data[key]) <= 1 else form_data[key] for key in form_data}
-        print(show_dict)
         show = Show(**show_dict)
         show.insert()
         # on successful db insert, flash success

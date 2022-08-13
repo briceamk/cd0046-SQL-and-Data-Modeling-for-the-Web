@@ -1,8 +1,9 @@
 from datetime import datetime
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, AnyOf, URL
+from wtforms.validators import DataRequired, URL, Regexp, Optional
 from enum import Enum
+import re
 
 
 class Genre(Enum):
@@ -106,16 +107,30 @@ class State(Enum):
 
 class ShowForm(FlaskForm):
     artist_id = StringField(
-        'artist_id'
+        'artist_id', validators=[
+                                DataRequired(),
+                                Regexp(
+                                    regex='^[0-9]*$',
+                                    message='must be a number')
+        ]
     )
     venue_id = StringField(
-        'venue_id'
+        'venue_id', validators=[
+                                DataRequired(),
+                                Regexp(
+                                    regex='^[0-9]*$',
+                                    message='must be a number')
+        ]
     )
     start_time = DateTimeField(
         'start_time',
         validators=[DataRequired()],
         default=datetime.today()
     )
+
+    def __init__(self, *args, **kwargs):
+        kwargs['csrf_enabled'] = False
+        super(ShowForm, self).__init__(*args, **kwargs)
 
 
 class VenueForm(FlaskForm):
@@ -134,10 +149,13 @@ class VenueForm(FlaskForm):
         'address', validators=[DataRequired()]
     )
     phone = StringField(
-        'phone'
+        'phone', validators=[
+                    DataRequired(),
+                    Regexp(regex='^[0-9]{3}-[0-9]{3}-[0-9]{4}$', message='Invalid phone number. must be xxx-xxx-xxxx')
+        ]
     )
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[URL(message='Invalid link'), Optional()]
     )
     genres = SelectMultipleField(
         'genres', validators=[DataRequired()],
@@ -145,10 +163,10 @@ class VenueForm(FlaskForm):
         coerce=Genre.coerce
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(message='Invalid link'), Optional()]
     )
     website_link = StringField(
-        'website_link'
+        'website_link', validators=[URL(message='Invalid link'), Optional()]
     )
 
     seeking_talent = BooleanField('seeking_talent')
@@ -156,6 +174,10 @@ class VenueForm(FlaskForm):
     seeking_description = StringField(
         'seeking_description'
     )
+
+    def __init__(self, *args, **kwargs):
+        kwargs['csrf_enabled'] = False
+        super(VenueForm, self).__init__(*args, **kwargs)
 
 
 class ArtistForm(FlaskForm):
@@ -171,10 +193,13 @@ class ArtistForm(FlaskForm):
         coerce=State.coerce
     )
     phone = StringField(
-        'phone'
+        'phone', validators=[
+            DataRequired(),
+            Regexp(regex='^[0-9]{3}-[0-9]{3}-[0-9]{4}$', message='Invalid phone number. must be xxx-xxx-xxxx')
+        ]
     )
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[URL(message='Invalid link'), Optional()]
     )
     genres = SelectMultipleField(
         'genres', validators=[DataRequired()],
@@ -182,11 +207,10 @@ class ArtistForm(FlaskForm):
         coerce=Genre.coerce
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(message='Invalid link'), Optional()]
     )
-
     website_link = StringField(
-        'website_link'
+        'website_link', validators=[URL(message='Invalid link'), Optional()]
     )
 
     seeking_venue = BooleanField('seeking_venue')
@@ -194,3 +218,7 @@ class ArtistForm(FlaskForm):
     seeking_description = StringField(
         'seeking_description'
     )
+
+    def __init__(self, *args, **kwargs):
+        kwargs['csrf_enabled'] = False
+        super(ArtistForm, self).__init__(*args, **kwargs)
